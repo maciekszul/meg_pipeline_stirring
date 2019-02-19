@@ -1,1 +1,4 @@
-# meg_pipeline_stirring
+# MEG pipeline: Stirring experiment
+
+## order of operations:
+1. source localisation
