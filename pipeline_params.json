@@ -1,4 +1,7 @@
 {
   "data_path": "/cubric/data/c1557187/stirring_MEG",
-  "coreg_viz": true
+  "coreg_viz": false,
+  "bem_surf": false,
+  "compute_source_space": true,
+  "source_space_3d": true
 }
