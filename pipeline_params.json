@@ -1,3 +1,4 @@
 {
-  "data_path": "/cubric/data/c1557187/stirring_MEG"
+  "data_path": "/cubric/data/c1557187/stirring_MEG",
+  "coreg_viz": true
 }
