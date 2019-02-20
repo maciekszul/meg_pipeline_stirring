@@ -3,6 +3,7 @@ import os.path as op
 import argparse
 import json
 import numpy as np
+import matplotlib.pyplot as plt
 from utilities import files
 
 
@@ -66,7 +67,7 @@ if pipeline_params["compute_source_space"]:
     src = mne.setup_source_space(
         subject=subj, 
         subjects_dir=mri_dir, 
-        spacing="ico3", 
+        spacing="ico4", 
         add_dist=False
     )
 
@@ -92,4 +93,71 @@ if pipeline_params["source_space_3d"]:
         surf.z[vertidx], 
         color=(1, 1, 0), 
         scale_factor=1.5
+    )
+
+if pipeline_params["make_fwd_solution"]:
+    # conductivity = (0.3, )
+    model = mne.make_bem_model(
+        subject=subj,
+        ico=4,
+        # conductivity=conductivity,
+        subjects_dir=mri_dir
+    )
+
+    bem = mne.make_bem_solution(model)
+    
+    for ix, fif in enumerate(raw_files):
+        fwd = mne.make_forward_solution(
+            fif,
+            trans=trans_file,
+            src=src,
+            bem=bem,
+            meg=True,
+            eeg=False,
+            mindist=5.0,
+            n_jobs=-1
+        )
+        output_name = op.join(out_path, "{0}-fwd.fif".format(ix))
+        mne.write_forward_solution(output_name, fwd)
+
+
+if pipeline_params["check_fwd_solution"]:
+    fwd_sol_files = files.get_files(out_path, "", "-fwd.fif")[0]
+    fwd_sol_files.sort()
+    sensi_list = []
+    for ix, fwd_file in enumerate(fwd_sol_files):
+        fwd = mne.read_forward_solution(fwd_file)
+        mne.convert_forward_solution(fwd, surf_ori=True, copy=False)
+        leadfield = fwd["sol"]["data"]
+        mag_map = mne.sensitivity_map(fwd, ch_type="mag", mode="fixed")
+        sensi_list.append(mag_map.data.ravel())
+    
+    plt.figure()
+    plt.hist(
+        sensi_list,
+        bins=20,
+        label=["File {}".format(i) for i in range(len(fwd_sol_files))],
+    )
+    plt.legend()
+    plt.title("Normal orientation sensitivity, subject {}".format(subj))
+    plt.xlabel("sensitivity")
+    plt.ylabel("count")
+    fig_file = op.join(out_path, "orientation_sensitivity_all_files.png")
+    plt.savefig(fig_file)
+
+
+
+if pipeline_params["check_fwd_solution_3d_file"][0]:
+    fwd_sol_files = files.get_files(out_path, "", "-fwd.fif")[0]
+    fwd_sol_files.sort()
+    ix = pipeline_params["check_fwd_solution_3d_file"][1]
+    fwd_file = fwd_sol_files[ix]
+    fwd = mne.read_forward_solution(fwd_file)
+    mne.convert_forward_solution(fwd, surf_ori=True, copy=False)
+    leadfield = fwd["sol"]["data"]
+    mag_map = mne.sensitivity_map(fwd, ch_type='mag', mode='fixed')
+    mag_map.plot(
+        time_label="Magnetometer sensitivity",
+        subjects_dir=mri_dir,
+        clim=dict(lims=[0, 50, 100])
     )

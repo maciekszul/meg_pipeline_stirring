@@ -1,7 +1,14 @@
 {
   "data_path": "/cubric/data/c1557187/stirring_MEG",
+
+  "01_fwd_solution.py": "parameters",
   "coreg_viz": false,
   "bem_surf": false,
-  "compute_source_space": true,
-  "source_space_3d": true
+  "compute_source_space": false,
+  "source_space_3d": false,
+  "make_fwd_solution": false,
+  "check_fwd_solution": false,
+  "check_fwd_solution_3d_file": [false , 0]
+
+
 }
