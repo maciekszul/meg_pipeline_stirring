@@ -1,4 +1,5 @@
 import os
+from itertools import compress
 
 def get_folders_files(path, wp=True):
     """
@@ -49,3 +50,16 @@ def get_files(path, prefix, extension, wp=True):
 def make_folder(path):
     if not os.path.exists(path):
         os.mkdir(path)
+
+
+def items_cont_str(input_list, string, sort=False):
+    """
+    returns a list of items which contain a given string
+    optionally sorted
+    """
+    output_list = [string in i for i in input_list]
+    output_list = list(compress(input_list, output_list))
+    if sort:
+        output_list.sort()
+    return output_list
+

@@ -4,8 +4,8 @@ import argparse
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-from utilities import files
-
+from tools import files
+import subprocess as sp
 
 # argparse input
 des = "pipeline script"
@@ -41,8 +41,54 @@ raw_files = files.get_files(raw_dir,"", ".fif")[0]
 raw_files.sort()
 trans_file = files.get_files(trans_dir, subj, "trans.fif")[0][0]
 
+proc_path = "/home/c1557187/data/stirring_MEG/proc/02_resamp_ica/"
+proc_file_raw = op.join(proc_path, subj, "resamp_ica_raw.fif")
+proc_events = op.join(proc_path, subj, "resamp_raw-eve.fif")
+
+# events info
+event_id = {
+            1: 'hR_hR', 
+            2: 'hR_hL', 
+            3: 'hR_lR', 
+            4: 'hR_lL', 
+            5: 'hL_hR', 
+            6: 'hL_hL', 
+            7: 'hL_lR', 
+            8: 'hL_lL'
+            }
+
+
 # read in the info from raw data
-info = mne.io.read_info(raw_files[0])
+info = mne.io.read_info(raw_files[0], verbose=False)
+
+if pipeline_params["epoch"]:
+    raw = proc_file_raw
+    events = proc_events
+    
+    picks = mne.pick_types(
+        raw.info, 
+        meg=True, 
+        eeg=False, 
+        stim=False, 
+        eog=False, 
+        ref_meg='auto', 
+        exclude='bads'
+    )
+
+    epochs = mne.Epochs(
+        raw, 
+        events, 
+        event_id=event_id, 
+        tmin=0.55, 
+        tmax=4.75,
+        picks=picks, 
+        preload=True, 
+        detrend=0, 
+        baseline=(0.55,0.75),
+        verbose=False
+        )
+    
+    epochs.apply_baseline((0.55, 0.75))
 
 if pipeline_params["coreg_viz"]:
     mne.viz.plot_alignment(
@@ -146,7 +192,6 @@ if pipeline_params["check_fwd_solution"]:
     plt.savefig(fig_file)
 
 
-
 if pipeline_params["check_fwd_solution_3d_file"][0]:
     fwd_sol_files = files.get_files(out_path, "", "-fwd.fif")[0]
     fwd_sol_files.sort()
@@ -155,9 +200,54 @@ if pipeline_params["check_fwd_solution_3d_file"][0]:
     fwd = mne.read_forward_solution(fwd_file)
     mne.convert_forward_solution(fwd, surf_ori=True, copy=False)
     leadfield = fwd["sol"]["data"]
-    mag_map = mne.sensitivity_map(fwd, ch_type='mag', mode='fixed')
+    mag_map = mne.sensitivity_map(fwd, ch_type="mag", mode="fixed")
     mag_map.plot(
         time_label="Magnetometer sensitivity",
         subjects_dir=mri_dir,
         clim=dict(lims=[0, 50, 100])
     )
+
+
+if pipeline_params["convert_noise"]:
+    raw_ds = files.get_folders_files(raw_dir)[0]
+    noise_ds = files.items_cont_str(raw_ds, "Noise", sort=True)[0]
+    noise_fif = op.join(raw_dir, "noise-raw.fif")
+    ctf2fif = "/cubric/data/c1557187/MNE/bin/mne_ctf2fiff"
+    sp.call(
+        [ctf2fif,
+        "--ds",
+        noise_ds,
+        "--fif",
+        noise_fif]
+    )
+
+
+if pipeline_params["process_noise"]:
+    cov_file = files.get_files(raw_dir, "", "noise-raw.fif")[0][0]
+    cov_raw = mne.io.read_raw_fif(cov_file, preload=True, verbose=False)
+    cov_raw.filter(
+        1, 
+        90, 
+        n_jobs=-1, 
+        filter_length='auto',
+        fir_design='firwin',
+        method='fir'
+    )
+
+    cov_out_file = op.join(
+        out_path,
+        "processed-noise.fif"
+    )
+
+    cov_raw.save(
+        cov_out_file, 
+        fmt='single', 
+        split_size='2GB'
+    )
+
+
+if pipeline_params["compute_raw_covariance"][0]:
+    cov_file = files.get_files(raw_dir, "", "noise-raw.fif")[0][0]
+    cov_raw = mne.io.read_raw_fif(cov_file, preload=False, verbose=False)
+    cov = mne.compute_raw_covariance(cov_raw, method="auto", rank=None)
+    cov.plot(cov_raw.info, proj=True)
