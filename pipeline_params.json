@@ -2,20 +2,25 @@
   "data_path": "/cubric/data/c1557187/stirring_MEG",
 
   "epoching": "parameters",
-  "epoch": false,
+  "epoch_4s": false,
+  "epoch_2s": false,
 
   "fwd_solution": "parameters",
   "coreg_viz": false,
   "bem_surf": false,
+  "make_bem_model": false,
   "compute_source_space": false,
   "source_space_3d": false,
   "make_fwd_solution": false,
+  "make_fwd_solution_epo": false,
   "check_fwd_solution": false,
   "check_fwd_solution_3d_file": [false , 0],
 
   "inv_solution": "parameters",
   "convert_noise": false,
-  "process_noise": true,
-  "compute_raw_covariance": [false, false]
-
+  "room_noise": false,
+  "rs_noise": false,
+  "compute_noise_covariance": [false, "rs"],
+  "compute_inverse_operator": false,
+  "compute_inverse_solution": [true, "dSPM"]
 }
