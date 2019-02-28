@@ -415,32 +415,56 @@ if pipeline_params["rs_noise"]:
 
 
 if pipeline_params["compute_noise_covariance"][0]:
-    cov_file = files.get_files(
-        out_path,
-        "",
-        "{}-noise.fif".format(pipeline_params["compute_noise_covariance"][1])
-    )[0][0]
-    cov_raw = mne.io.read_raw_fif(
-        cov_file, 
-        preload=False, 
-        verbose=False
-    )
-    picks = mne.pick_types(
-        cov_raw.info, 
-        meg=True, 
-        eeg=False, 
-        stim=False, 
-        eog=False, 
-        ref_meg='auto', 
-        exclude='bads'
-    ) 
-    noise_cov = mne.compute_raw_covariance(
-        cov_raw, 
-        method=['shrunk', 'empirical'], 
-        rank=None,
-        picks=picks,
-        n_jobs=-1
-    )
+    if pipeline_params["compute_noise_covariance"][1] == "dataset":
+        raw = mne.io.read_raw_fif(
+            proc_file_raw, 
+            preload=True,
+            verbose=False
+        )
+
+        picks = mne.pick_types(
+            raw.info, 
+            meg=True, 
+            eeg=False, 
+            stim=False, 
+            eog=False, 
+            ref_meg='auto', 
+            exclude='bads'
+        ) 
+        noise_cov = mne.compute_raw_covariance(
+            raw, 
+            method=['shrunk', 'empirical'], 
+            rank=None,
+            picks=picks,
+            n_jobs=-1
+        )
+    else:
+        cov_file = files.get_files(
+            out_path,
+            "",
+            "{}-noise.fif".format(pipeline_params["compute_noise_covariance"][1])
+        )[0][0]
+        cov_raw = mne.io.read_raw_fif(
+            cov_file, 
+            preload=False, 
+            verbose=False
+        )
+        picks = mne.pick_types(
+            cov_raw.info, 
+            meg=True, 
+            eeg=False, 
+            stim=False, 
+            eog=False, 
+            ref_meg='auto', 
+            exclude='bads'
+        ) 
+        noise_cov = mne.compute_raw_covariance(
+            cov_raw, 
+            method=['shrunk', 'empirical'], 
+            rank=None,
+            picks=picks,
+            n_jobs=-1
+        )
     
 
 if pipeline_params["compute_inverse_operator"]:

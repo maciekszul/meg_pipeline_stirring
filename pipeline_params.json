@@ -20,7 +20,8 @@
   "convert_noise": false,
   "room_noise": false,
   "rs_noise": false,
-  "compute_noise_covariance": [false, "rs"],
-  "compute_inverse_operator": false,
-  "compute_inverse_solution": [true, "dSPM"]
+  "compute_noise_covariance": [true, "dataset"],
+  "compute_noise_covariance_params": ["room", "rs", "dataset"],
+  "compute_inverse_operator": true,
+  "compute_inverse_solution": [false, "dSPM"]
 }
