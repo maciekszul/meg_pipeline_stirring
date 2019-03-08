@@ -1,5 +1,14 @@
 {
   "data_path": "/cubric/data/c1557187/stirring_MEG",
+  "output_path": "/cubric/scratch/c1557187/stirring_source",
+  "fs_path": "/cubric/data/c1557187/stirring_MEG/mri/fs_results",
+
+  "PREPROCESSING": "PARAMETERS",
+  "downsample_raw": [false, 250],
+  "filter_raw": [false, [[0,40], [1,40], [3,40], [1,90]]],
+  "create_ICA_json": true,
+  "compute_ICA": [false, [[0,40], [1,40], [3,40], [1,90]]],
+
 
   "epoching": "parameters",
   "epoch_4s": false,
@@ -20,8 +29,8 @@
   "convert_noise": false,
   "room_noise": false,
   "rs_noise": false,
-  "compute_noise_covariance": [true, "dataset"],
+  "compute_noise_covariance": [false, "dataset"],
   "compute_noise_covariance_params": ["room", "rs", "dataset"],
-  "compute_inverse_operator": true,
+  "compute_inverse_operator": false,
   "compute_inverse_solution": [false, "dSPM"]
 }
