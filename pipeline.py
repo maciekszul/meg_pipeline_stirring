@@ -1,4 +1,5 @@
 import mne
+from mne.preprocessing import ICA
 import os.path as op
 import os
 import argparse
@@ -185,6 +186,9 @@ if pipeline_params["filter_raw"][0]:
 
 
 if pipeline_params["create_ICA_json"]:
+    """
+    TO DO: json generation should be subject specific (amount of files)
+    """
     filter_iter = pipeline_params["filter_raw"][1]
     list_of_files = []
     for i in filter_iter:
@@ -203,22 +207,65 @@ if pipeline_params["create_ICA_json"]:
         open(json_ICA, 'a').close()
         ica_json = {i:None for i in subjs}
         for key in ica_json.keys():
+
             ica_json[key] = {i: [] for i in list_of_files}
 
         files.dump_the_dict(json_ICA, ica_json)
 
 if pipeline_params["compute_ICA"][0]:
-    filter_iter = pipeline_params["filter_raw"][1]
+    with open(json_ICA) as pipeline_file:
+        for_ICA = json.load(pipeline_file)
+    
+    filter_iter = pipeline_params["compute_ICA"][1]
+    files_for_ICA = list(for_ICA[subj].keys())
 
+    to_compute = []
     for i in filter_iter:
         prefix = "{}_{}".format(*i)
-        print(prefix)
-        exp_files = files.get_files(
+        files_freq = files.items_cont_str(files_for_ICA, prefix)
+        to_compute.extend(files_freq)
+
+    for file in to_compute:
+        raw_in = op.join(
             output_subj,
-            prefix,
-            "-raw.fif",
-            wp=False
-        )[1]
-        exp_files.sort()
-        print(exp_files)
-        
+            file
+        )
+        ica_out = op.join(
+            output_subj,
+            "{}-ica.fif".format(file[:-8])
+        )
+        print(ica_out)
+        raw = mne.io.read_raw_fif(
+            raw_in,
+            preload=True,
+            verbose=False
+        )
+
+        picks_meg = mne.pick_types(
+            raw.info, 
+            meg=True, 
+            eeg=False, 
+            eog=False, 
+            ecg=False, 
+            ref_meg=False
+        )
+
+        n_components = 50
+        method = "fastica"
+        decim = None
+        random_state = None
+        reject = dict(mag=5e-12)
+
+        ica = ICA(
+            n_components=n_components, 
+            method=method, 
+            random_state=random_state
+        )
+
+        ica.fit(
+            raw, 
+            picks=picks_meg, 
+            decim=decim, 
+            reject=reject
+        )
+        ica.save(ica_out)

@@ -6,8 +6,8 @@
   "PREPROCESSING": "PARAMETERS",
   "downsample_raw": [false, 250],
   "filter_raw": [false, [[0,40], [1,40], [3,40], [1,90]]],
-  "create_ICA_json": true,
-  "compute_ICA": [false, [[0,40], [1,40], [3,40], [1,90]]],
+  "create_ICA_json": false,
+  "compute_ICA": [true, [[0,40], [1,40], [3,40], [1,90]]],
 
 
   "epoching": "parameters",
