@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tools import files
 import subprocess as sp
+import pandas as pd
 
 json_file = "pipeline_params.json"
 
@@ -54,6 +55,8 @@ files.make_folder(output_subj)
 
 json_ICA = "ICA_comp.json"
 
+mne.set_config("MNE_LOGGING_LEVEL", "CRITICAL")
+verb = False
 
 if pipeline_params["downsample_raw"][0]:
     """
@@ -91,8 +94,8 @@ if pipeline_params["downsample_raw"][0]:
 
         raw = mne.io.read_raw_fif(
             raw_path, 
-            preload=True, 
-            verbose=False
+            preload=True,
+            verbose=verb
         )
 
         events = mne.find_events(
@@ -104,7 +107,7 @@ if pipeline_params["downsample_raw"][0]:
             samp, 
             npad='auto', 
             events=events,
-            n_jobs=-1
+            n_jobs=-1,
         )
 
         mne.write_events(
@@ -112,6 +115,32 @@ if pipeline_params["downsample_raw"][0]:
             events_resampled
         )
 
+        picks_meg = mne.pick_types(
+            raw.info, 
+            meg=True, 
+            eeg=False, 
+            eog=False, 
+            ecg=False, 
+            ref_meg=False
+        )
+
+        raw_resampled.filter(
+            0,
+            90,
+            picks=picks_meg,
+            n_jobs=-1,
+            method="fir",
+            phase="minimum"
+        )
+
+        tmin = (events_resampled[0,0] / samp) - 1
+        tmax = (events_resampled[-1,0] / samp) + 1
+        
+        raw.crop(
+            tmin=tmin,
+            tmax=tmax
+        )
+        
         raw_resampled.save(
             out_raw, 
             fmt="single", 
@@ -123,12 +152,7 @@ if pipeline_params["downsample_raw"][0]:
         print(out_raw)
         print(out_eve)
 
-if pipeline_params["filter_raw"][0]:
-    """
-    FILTER AND DETREND RAW FILES USING FILTERS SPECIFIED IN PARAMETERS
-    """
-    import itertools as it
-
+if pipeline_params["compute_ICA"]:
     exp_files = files.get_files(
         output_subj,
         "",
@@ -137,108 +161,25 @@ if pipeline_params["filter_raw"][0]:
     )[0]
     exp_files.sort()
 
-    filter_iter = pipeline_params["filter_raw"][1]
-    hp_lp_iter = it.product(filter_iter, exp_files)
-
-    for (hpass, lpass), file in hp_lp_iter:
+    for file in exp_files:
         raw_in = op.join(
             output_subj,
             file
         )
 
-        filter_file = "{}_{}_{}".format(
-            hpass,
-            lpass,
-            file
+        ica_file = "{}-ica.fif".format(
+            file[:-8],
         )
 
-        filter_out = op.join(
-            output_subj,
-            filter_file
-        )
-
-        raw = mne.io.read_raw_fif(
-            raw_in,
-            preload=True,
-            verbose=False
-        )
-
-        picks_meg = mne.pick_types(
-            raw.info, 
-            meg=True, 
-            eeg=False, 
-            eog=False, 
-            ecg=False, 
-            ref_meg=False
-        )
-        
-        raw = raw.filter(
-            hpass,
-            lpass,
-            picks=picks_meg,
-            n_jobs=-1,
-            method="fir",
-            phase="minimum"
-        )
-
-        raw.save(filter_out, fmt="single", split_size="2GB")
-        print(hpass, lpass, filter_file)
-
-
-if pipeline_params["create_ICA_json"]:
-    """
-    TO DO: json generation should be subject specific (amount of files)
-    """
-    filter_iter = pipeline_params["filter_raw"][1]
-    list_of_files = []
-    for i in filter_iter:
-        prefix = "{}_{}".format(*i)
-        print(prefix)
-        exp_files = files.get_files(
-            output_subj,
-            prefix,
-            "-raw.fif",
-            wp=False
-        )[1]
-        exp_files.sort()
-        list_of_files.extend(exp_files)
-    
-    if not os.path.exists(json_ICA): # add not if the script is ready
-        open(json_ICA, 'a').close()
-        ica_json = {i:None for i in subjs}
-        for key in ica_json.keys():
-
-            ica_json[key] = {i: [] for i in list_of_files}
-
-        files.dump_the_dict(json_ICA, ica_json)
-
-if pipeline_params["compute_ICA"][0]:
-    with open(json_ICA) as pipeline_file:
-        for_ICA = json.load(pipeline_file)
-    
-    filter_iter = pipeline_params["compute_ICA"][1]
-    files_for_ICA = list(for_ICA[subj].keys())
-
-    to_compute = []
-    for i in filter_iter:
-        prefix = "{}_{}".format(*i)
-        files_freq = files.items_cont_str(files_for_ICA, prefix)
-        to_compute.extend(files_freq)
-
-    for file in to_compute:
-        raw_in = op.join(
-            output_subj,
-            file
-        )
         ica_out = op.join(
             output_subj,
-            "{}-ica.fif".format(file[:-8])
+            ica_file
         )
-        print(ica_out)
+        
         raw = mne.io.read_raw_fif(
             raw_in,
             preload=True,
-            verbose=False
+            verbose=verb
         )
 
         picks_meg = mne.pick_types(
@@ -251,21 +192,378 @@ if pipeline_params["compute_ICA"][0]:
         )
 
         n_components = 50
-        method = "fastica"
-        decim = None
-        random_state = None
-        reject = dict(mag=5e-12)
+        method = "extended-infomax"
+        reject = dict(mag=4e-12)
 
         ica = ICA(
             n_components=n_components, 
-            method=method, 
-            random_state=random_state
+            method=method
         )
 
         ica.fit(
             raw, 
-            picks=picks_meg, 
-            decim=decim, 
-            reject=reject
+            picks=picks_meg,
+            reject=reject,
+            verbose=verb
         )
+
         ica.save(ica_out)
+
+if pipeline_params["create_JSON"]:
+    """
+    CREATE A JSON FILE TO FILL WHEN USING ICA_manual_inspection.py.
+    RUN ONLY AFTER DOWNSAMPLING AND COMPUTING ICA. CLEARS THE FILE SO
+    BE CAREFUL.
+    """
+    json_ICA = "ICA_comp.json"
+    if not op.exists(json_ICA): # add not if the script is ready
+        open(json_ICA, 'a').close()
+    
+    dict_JSON = {
+        i: {} for i in subjs
+    }
+
+    for i in subjs:
+        raws_in = op.join(
+            output_path, 
+            "data", 
+            i
+        )
+        raw_files = files.get_files(
+            raws_in,
+            "",
+            "-raw.fif",
+            wp=False
+        )[0]
+        dict_JSON[i] = {x: [] for x in raw_files}
+    files.dump_the_dict(
+        json_ICA,
+        dict_JSON
+    )
+
+if pipeline_params["apply_ICA"]:
+    with open(json_ICA) as pipeline_file:
+        ica_subj_comp = json.load(pipeline_file)
+
+    for i in ica_subj_comp[subj].keys():
+        
+        rej_comps = ica_subj_comp[subj][i]
+        raw_in = op.join(
+            output_subj,
+            i
+        )
+        ica_sol = op.join(
+            output_subj,
+            "{}-ica.fif".format(i[:-8])
+        )
+
+        cleaned_file = op.join(
+            output_subj,
+            "ica_cln_{}-raw.fif".format(i[:-8])
+        )
+
+        raw = mne.io.read_raw_fif(
+            raw_in,
+            preload=True,
+            verbose=verb
+        )
+
+        ica = mne.preprocessing.read_ica(ica_sol)
+        raw_ica = ica.apply(
+            raw,
+            exclude=rej_comps
+        )
+        
+        raw_ica.save(
+            cleaned_file,
+            fmt="single",
+            split_size="2GB",
+            overwrite=True
+        )
+        
+        print(cleaned_file, rej_comps)
+
+if pipeline_params["filter_more"][0]:
+    filter_iter = pipeline_params["filter_more"][1]
+    raw_files = files.get_files(
+        output_subj,
+        "ica_cln",
+        "-raw.fif",
+        wp=False
+    )[2]
+    for hpass, lpass in filter_iter:
+        folder_name = "filtered_{}_{}".format(hpass, lpass)
+        folder_out = op.join(
+            output_subj,
+            folder_name
+        )
+        files.make_folder(folder_out)
+        raw_files.sort()
+        for i in raw_files:
+            raw_in = op.join(
+                output_subj,
+                i
+            )
+            raw_out = op.join(
+                output_subj,
+                folder_name,
+                i
+            )
+
+            raw = mne.io.read_raw_fif(
+                raw_in,
+                preload=True,
+                verbose=verb
+            )
+
+            picks_meg = mne.pick_types(
+                raw.info, 
+                meg=True, 
+                eeg=False, 
+                eog=False, 
+                ecg=False, 
+                ref_meg=False
+            )
+
+            raw.filter(
+                hpass,
+                lpass,
+                picks=picks_meg,
+                n_jobs=-1,
+                method="fir",
+                phase="minimum"
+            )
+
+            raw.save(
+                raw_out,
+                fmt="single",
+                split_size="2GB",
+                overwrite=True
+            )
+
+            print(raw_out)
+
+if pipeline_params["epochs"]:
+    input_path = op.join(
+        output_subj,
+        pipeline_params["which_folder"]
+    )
+
+    beh_file = op.join(
+        pipeline_params["beh_path"],
+        subj,
+        "resamp_beh.pkl"
+    )
+
+    exp_files = files.get_files(
+        input_path,
+        "ica_cln",
+        "-raw.fif",
+        wp=False
+    )[2]
+
+    event_files = files.get_files(
+        output_subj,
+        "",
+        "-eve.fif",
+        wp=False
+    )[0]
+    
+    exp_files.sort()
+    event_files.sort()
+
+    event_files = [x for x in event_files if "rs" not in x]
+    exp_files = [x for x in exp_files if "rs" not in x]
+
+    events_d = {ef: mne.read_events(
+        op.join(output_subj, ef),
+        include=list(range(1,9))
+    ) for ef in event_files}
+
+    arr_lens = [events_d[i].shape[0] for i in event_files]
+    arr_sect = np.cumsum(arr_lens)[:-1]
+    all_evts = np.vstack(
+        [events_d[i] for i in event_files]
+    )
+    all_evts = np.hstack(
+        [all_evts, np.arange(all_evts.shape[0]).reshape(-1,1)]
+    )
+    new_evts = {f: e for f, e in zip(event_files, np.split(all_evts, arr_sect))}
+    test_of_trueness = np.array(
+        [sum(events_d[i][:,2] == new_evts[i][:,2]) for i in event_files]
+    )
+    test_of_length = arr_lens == test_of_trueness
+
+    print(test_of_length)
+
+    beh = pd.read_pickle(
+        beh_file
+    )
+
+    beh_vs_meg = beh.conditions.values + 1 == all_evts[:,2]
+    compatible = np.sum(beh_vs_meg) == all_evts.shape[0]
+
+    print(compatible)
+
+if pipeline_params["epoch_2s"]:
+
+    for exp, eve in zip(exp_files, event_files):
+        raw_in = op.join(
+            input_path,
+            exp
+        )
+        
+        raw = mne.io.read_raw_fif(
+            raw_in, 
+            preload=True,
+            verbose=verb
+        )
+
+        evts = events_d[eve]
+        
+        picks = mne.pick_types(
+            raw.info, 
+            meg=True, 
+            eeg=False, 
+            stim=False, 
+            eog=False, 
+            ref_meg='auto', 
+            exclude='bads'
+        ) 
+
+        epochs1 = mne.Epochs(
+            raw, 
+            evts, 
+            event_id=list(range(1, 9)),
+            tmin=0.552, 
+            tmax=2.752,
+            picks=picks, 
+            preload=True, 
+            detrend=1, 
+            baseline=(0.55,0.75),
+            verbose=verb
+            )
+        
+        epochs1.apply_baseline((0.552, 0.752))
+        epochs1.shift_time(-0.752)
+        epochs1.apply_baseline((-0.2, 0.0))
+
+        epochs2 = mne.Epochs(
+            raw,
+            evts,
+            event_id=list(range(1, 9)),
+            tmin=2.552,
+            tmax=4.752,
+            picks=picks,
+            preload=True,
+            detrend=1,
+            baseline=(2.552, 2.752),
+            verbose=verb
+        )
+
+        epochs2.apply_baseline((2.552, 2.752))
+        epochs2.shift_time(-2.752)
+        epochs2.apply_baseline((-0.2, 0.0))
+
+        epochs_file_out1 = op.join(
+            input_path,
+            "ph1_2s_{}-epo.fif".format(exp[8:-8])
+        )
+
+        epochs_file_out2 = op.join(
+            input_path,
+            "ph2_2s_{}-epo.fif".format(exp[8:-8])
+        )
+
+        epochs1.save(
+            epochs_file_out1,
+            split_size="2GB",
+            fmt="single",
+            verbose=False
+        )
+        print(epochs_file_out1)
+        epochs2.save(
+            epochs_file_out2,
+            split_size="2GB",
+            fmt="single",
+            verbose=False
+        )
+        print(epochs_file_out2)
+
+if pipeline_params["epoch_4s"]:
+    for exp, eve in zip(exp_files, event_files):
+        raw_in = op.join(
+            input_path,
+            exp
+        )
+        
+        raw = mne.io.read_raw_fif(
+            raw_in, 
+            preload=True,
+            verbose=verb
+        )
+
+        evts = events_d[eve]
+        
+        picks = mne.pick_types(
+            raw.info, 
+            meg=True, 
+            eeg=False, 
+            stim=False, 
+            eog=False, 
+            ref_meg='auto', 
+            exclude='bads'
+        ) 
+
+        epochs = mne.Epochs(
+            raw, 
+            evts, 
+            event_id=list(range(1, 9)),
+            tmin=0.552, 
+            tmax=4.752,
+            picks=picks,
+            baseline=(0.552,0.752),
+            preload=True, 
+            detrend=1,
+            verbose=verb
+            )
+        epochs.apply_baseline((0.552, 0.752))
+        epochs.shift_time(-0.752)
+        epochs.apply_baseline((-0.2, 0.0))
+
+        epochs_file_out = op.join(
+            input_path,
+            "4s_{}-epo.fif".format(exp[8:-8])
+        )
+
+        epochs.save(
+            epochs_file_out,
+            split_size="2GB",
+            fmt="single",
+            verbose=False
+        )
+        print(epochs_file_out)
+
+if pipeline_params["epoch_response_locked"]:
+    """
+    """
+    engage_ar = beh.engage_ix.values
+    change_ar = beh.change_ix.values
+
+    for exp, eve in zip(exp_files, event_files):
+        # raw_in = op.join(
+        #     input_path,
+        #     exp
+        # )
+        
+        # raw = mne.io.read_raw_fif(
+        #     raw_in, 
+        #     preload=True,
+        #     verbose=verb
+        # )
+
+        evts = events_d[eve]
+        engage_val = engage_ar[new_evts[eve][:,3]]
+        
+        evts[:,0] = evts[:,0] + engage_val
+
