@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from tools import files
 import subprocess as sp
 import pandas as pd
+import copy
 
 json_file = "pipeline_params.json"
 
@@ -526,7 +527,7 @@ if pipeline_params["epoch_4s"]:
             preload=True, 
             detrend=1,
             verbose=verb
-            )
+        )
         epochs.apply_baseline((0.552, 0.752))
         epochs.shift_time(-0.752)
         epochs.apply_baseline((-0.2, 0.0))
@@ -540,7 +541,7 @@ if pipeline_params["epoch_4s"]:
             epochs_file_out,
             split_size="2GB",
             fmt="single",
-            verbose=False
+            verbose=verb
         )
         print(epochs_file_out)
 
@@ -551,19 +552,197 @@ if pipeline_params["epoch_response_locked"]:
     change_ar = beh.change_ix.values
 
     for exp, eve in zip(exp_files, event_files):
-        # raw_in = op.join(
-        #     input_path,
-        #     exp
-        # )
+        raw_in = op.join(
+            input_path,
+            exp
+        )
         
-        # raw = mne.io.read_raw_fif(
-        #     raw_in, 
-        #     preload=True,
-        #     verbose=verb
-        # )
+        raw = mne.io.read_raw_fif(
+            raw_in, 
+            preload=True,
+            verbose=verb
+        )
 
-        evts = events_d[eve]
+        picks = mne.pick_types(
+            raw.info, 
+            meg=True, 
+            eeg=False, 
+            stim=False, 
+            eog=False, 
+            ref_meg='auto', 
+            exclude='bads'
+        )
+
+        epochs_eng = op.join(
+            input_path,
+            "eng_{}-epo.fif".format(exp[8:-8])
+        )
+
+        epochs_ch = op.join(
+            input_path,
+            "ch_{}-epo.fif".format(exp[8:-8])
+        )
+
+        evts_e = copy.copy(events_d[eve])
         engage_val = engage_ar[new_evts[eve][:,3]]
-        
-        evts[:,0] = evts[:,0] + engage_val
+        evts_e[:,0] = evts_e[:,0] + engage_val
 
+        evts_c = copy.copy(events_d[eve])
+        change_val = change_ar[new_evts[eve][:,3]]
+        evts_c[:,0] = evts_c[:,0] + change_val
+
+        engage = mne.Epochs(
+            raw, 
+            evts_e, 
+            event_id=list(range(1, 9)),
+            tmin=-0.5, 
+            tmax=1.5,
+            picks=picks,
+            baseline=(-0.2, 0.0),
+            preload=True, 
+            detrend=1,
+            verbose=verb
+        )
+        
+        engage.save(
+            epochs_eng,
+            split_size="2GB",
+            fmt="single",
+            verbose=verb
+        )
+        print(epochs_eng)
+
+        change = mne.Epochs(
+            raw, 
+            evts_e, 
+            event_id=list(range(1, 9)),
+            tmin=-0.5, 
+            tmax=1.5,
+            picks=picks,
+            baseline=(-0.2, 0.0),
+            preload=True, 
+            detrend=1,
+            verbose=verb
+        )
+
+        change.save(
+            epochs_ch,
+            split_size="2GB",
+            fmt="single",
+            verbose=verb
+        )
+        print(epochs_ch)
+
+if pipeline_params["compute_forward_solution"]:
+    src = mne.setup_source_space(
+        subject=subj, 
+        subjects_dir=fs_path, 
+        spacing="ico5", 
+        add_dist=False
+    )
+
+    conductivity = (0.3, )
+    model = mne.make_bem_model(
+        subject=subj,
+        ico=5,
+        conductivity=conductivity,
+        subjects_dir=fs_path
+    )
+
+    bem = mne.make_bem_solution(model)
+
+    source_raw_files = files.get_files(
+        output_subj,
+        "ica_cln",
+        "-raw.fif",
+        wp=False
+    )[2]
+    source_raw_files.sort()
+
+    trans_file = op.join(
+        pipeline_params["data_path"],
+        "dig",
+        subj,
+        "{}-trans.fif".format(subj)
+    )
+    
+    for src_raw in source_raw_files:
+        raw_in = op.join(
+            output_subj,
+            src_raw
+        )
+
+        fwd_out = op.join(
+            output_subj,
+            "{}-fwd.fif".format(src_raw[8:-8])
+        )
+
+        fwd = mne.make_forward_solution(
+            raw_in,
+            trans=trans_file,
+            src=src,
+            bem=bem,
+            meg=True,
+            eeg=False,
+            mindist=5.0,
+            n_jobs=-1
+        )
+        
+        mne.write_forward_solution(
+            fwd_out, 
+            fwd, 
+            verbose=verb
+        )
+        print(fwd_out)
+
+if pipeline_params["compute_noise_covariance"]:
+    source_raw_files = files.get_files(
+        output_subj,
+        "ica_cln",
+        "-raw.fif",
+        wp=False
+    )[2]
+    source_raw_files.sort()
+    for src_raw in source_raw_files:
+        raw_in = op.join(
+            output_subj,
+            src_raw
+        )
+
+        cov_mx_out = op.join(
+            output_subj,
+            "mx_{}-cov.fif".format(src_raw[8:-8])
+        )
+
+        raw = mne.io.read_raw_fif(
+            raw_in, 
+            preload=True,
+            verbose=False
+        )
+
+        picks = mne.pick_types(
+            raw.info, 
+            meg=True, 
+            eeg=False, 
+            stim=False, 
+            eog=False, 
+            ref_meg='auto', 
+            exclude='bads'
+        )
+
+        noise_cov = mne.compute_raw_covariance(
+            raw, 
+            method="auto", 
+            rank=None,
+            picks=picks,
+            n_jobs=-1
+        )
+
+        noise_cov.save(
+            cov_mx_out
+        )
+        print(cov_mx_out)
+        
+
+if pipeline_params["compute_inverse_operator"]:
+    pass
