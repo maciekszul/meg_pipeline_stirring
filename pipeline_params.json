@@ -27,10 +27,13 @@
   "EPOCHS_TO_CHOOSE": ["4s", "ph1_2s", "ph2_2s", "ch", "en"],
 
   "fwd_solution": "parameters",
+  "which_epochs": "4s",
   "compute_forward_solution": false,
 
   "inv_solution": "parameters",
   "compute_noise_covariance": false,
   "compute_inverse_operator": false,
-  "compute_inverse_solution": [false, "dSPM"]
+
+  "INVERSE_SOLUTIONS": ["dSPM", "eLORETA", "sLORETA"],
+  "compute_inverse_solution": [true, "dSPM"]
 }
