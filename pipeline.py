@@ -54,7 +54,8 @@ dig_dir = op.join(data_path, "dig", subj)
 output_subj = op.join(output_path, "data", subj)
 files.make_folder(output_subj)
 
-json_ICA = "ICA_comp.json"
+json_ICA = op.join(output_subj, "{}-ica-rej.json".format(subj))
+samp = pipeline_params["downsample_raw"][1]
 
 mne.set_config("MNE_LOGGING_LEVEL", "CRITICAL")
 verb = False
@@ -71,7 +72,6 @@ if pipeline_params["downsample_raw"][0]:
         wp=False
     )[0]
     exp_files.sort()
-    samp = pipeline_params["downsample_raw"][1]
 
     for filename in exp_files:
         raw_path = op.join(
@@ -210,45 +210,13 @@ if pipeline_params["compute_ICA"]:
 
         ica.save(ica_out)
 
-if pipeline_params["create_JSON"]:
-    """
-    CREATE A JSON FILE TO FILL WHEN USING ICA_manual_inspection.py.
-    RUN ONLY AFTER DOWNSAMPLING AND COMPUTING ICA. CLEARS THE FILE SO
-    BE CAREFUL.
-    """
-    json_ICA = "ICA_comp.json"
-    if not op.exists(json_ICA): # add not if the script is ready
-        open(json_ICA, 'a').close()
-    
-    dict_JSON = {
-        i: {} for i in subjs
-    }
-
-    for i in subjs:
-        raws_in = op.join(
-            output_path, 
-            "data", 
-            i
-        )
-        raw_files = files.get_files(
-            raws_in,
-            "",
-            "-raw.fif",
-            wp=False
-        )[0]
-        dict_JSON[i] = {x: [] for x in raw_files}
-    files.dump_the_dict(
-        json_ICA,
-        dict_JSON
-    )
-
 if pipeline_params["apply_ICA"]:
     with open(json_ICA) as pipeline_file:
         ica_subj_comp = json.load(pipeline_file)
 
-    for i in ica_subj_comp[subj].keys():
+    for i in ica_subj_comp.keys():
         
-        rej_comps = ica_subj_comp[subj][i]
+        rej_comps = ica_subj_comp[i]
         raw_in = op.join(
             output_subj,
             i
@@ -294,6 +262,7 @@ if pipeline_params["filter_more"][0]:
     )[2]
     for hpass, lpass in filter_iter:
         folder_name = "filtered_{}_{}".format(hpass, lpass)
+        folder_name = folder_name.translate(str.maketrans({".": ""}))
         folder_out = op.join(
             output_subj,
             folder_name
@@ -406,151 +375,13 @@ if pipeline_params["epochs"]:
 
     print(compatible)
 
-if pipeline_params["epoch_2s"]:
-
-    for exp, eve in zip(exp_files, event_files):
-        raw_in = op.join(
-            input_path,
-            exp
-        )
-        
-        raw = mne.io.read_raw_fif(
-            raw_in, 
-            preload=True,
-            verbose=verb
-        )
-
-        evts = events_d[eve]
-        
-        picks = mne.pick_types(
-            raw.info, 
-            meg=True, 
-            eeg=False, 
-            stim=False, 
-            eog=False, 
-            ref_meg='auto', 
-            exclude='bads'
-        ) 
-
-        epochs1 = mne.Epochs(
-            raw, 
-            evts, 
-            event_id=list(range(1, 9)),
-            tmin=0.552, 
-            tmax=2.752,
-            picks=picks, 
-            preload=True, 
-            detrend=1, 
-            baseline=(0.55,0.75),
-            verbose=verb
-            )
-        
-        epochs1.apply_baseline((0.552, 0.752))
-        epochs1.shift_time(-0.752)
-        epochs1.apply_baseline((-0.2, 0.0))
-
-        epochs2 = mne.Epochs(
-            raw,
-            evts,
-            event_id=list(range(1, 9)),
-            tmin=2.552,
-            tmax=4.752,
-            picks=picks,
-            preload=True,
-            detrend=1,
-            baseline=(2.552, 2.752),
-            verbose=verb
-        )
-
-        epochs2.apply_baseline((2.552, 2.752))
-        epochs2.shift_time(-2.752)
-        epochs2.apply_baseline((-0.2, 0.0))
-
-        epochs_file_out1 = op.join(
-            input_path,
-            "ph1_2s_{}-epo.fif".format(exp[8:-8])
-        )
-
-        epochs_file_out2 = op.join(
-            input_path,
-            "ph2_2s_{}-epo.fif".format(exp[8:-8])
-        )
-
-        epochs1.save(
-            epochs_file_out1,
-            split_size="2GB",
-            fmt="single",
-            verbose=False
-        )
-        print(epochs_file_out1)
-        epochs2.save(
-            epochs_file_out2,
-            split_size="2GB",
-            fmt="single",
-            verbose=False
-        )
-        print(epochs_file_out2)
-
-if pipeline_params["epoch_4s"]:
-    for exp, eve in zip(exp_files, event_files):
-        raw_in = op.join(
-            input_path,
-            exp
-        )
-        
-        raw = mne.io.read_raw_fif(
-            raw_in, 
-            preload=True,
-            verbose=verb
-        )
-
-        evts = events_d[eve]
-        
-        picks = mne.pick_types(
-            raw.info, 
-            meg=True, 
-            eeg=False, 
-            stim=False, 
-            eog=False, 
-            ref_meg='auto', 
-            exclude='bads'
-        ) 
-
-        epochs = mne.Epochs(
-            raw, 
-            evts, 
-            event_id=list(range(1, 9)),
-            tmin=0.552, 
-            tmax=4.752,
-            picks=picks,
-            baseline=(0.552,0.752),
-            preload=True, 
-            detrend=1,
-            verbose=verb
-        )
-        epochs.apply_baseline((0.552, 0.752))
-        epochs.shift_time(-0.752)
-        epochs.apply_baseline((-0.2, 0.0))
-
-        epochs_file_out = op.join(
-            input_path,
-            "4s_{}-epo.fif".format(exp[8:-8])
-        )
-
-        epochs.save(
-            epochs_file_out,
-            split_size="2GB",
-            fmt="single",
-            verbose=verb
-        )
-        print(epochs_file_out)
-
-if pipeline_params["epoch_response_locked"]:
+if pipeline_params["make_epochs"]:
     """
     """
     engage_ar = beh.engage_ix.values
     change_ar = beh.change_ix.values
 
+    # for exp, eve in zip([exp_files[0]], [event_files[0]]):
     for exp, eve in zip(exp_files, event_files):
         raw_in = op.join(
             input_path,
@@ -563,24 +394,39 @@ if pipeline_params["epoch_response_locked"]:
             verbose=verb
         )
 
-        picks = mne.pick_types(
+        meg_picks = mne.pick_types(
             raw.info, 
             meg=True, 
             eeg=False, 
             stim=False, 
             eog=False, 
-            ref_meg='auto', 
+            ref_meg="auto", 
             exclude='bads'
         )
 
-        epochs_eng = op.join(
+        epochs_eng_path = op.join(
             input_path,
             "eng_{}-epo.fif".format(exp[8:-8])
         )
 
-        epochs_ch = op.join(
+        epochs_ch_path = op.join(
             input_path,
             "ch_{}-epo.fif".format(exp[8:-8])
+        )
+
+        epochs_4s_path = op.join(
+            input_path,
+            "4s_{}-epo.fif".format(exp[8:-8])
+        )
+
+        epochs_ph1_path = op.join(
+            input_path,
+            "ph1_{}-epo.fif".format(exp[8:-8])
+        )
+
+        epochs_ph2_path = op.join(
+            input_path,
+            "ph2_{}-epo.fif".format(exp[8:-8])
         )
 
         evts_e = copy.copy(events_d[eve])
@@ -591,47 +437,73 @@ if pipeline_params["epoch_response_locked"]:
         change_val = change_ar[new_evts[eve][:,3]]
         evts_c[:,0] = evts_c[:,0] + change_val
 
-        engage = mne.Epochs(
-            raw, 
-            evts_e, 
+        big_baseline = (0.552, 0.752)
+        small_baseline = (-0.2, 0.0)
+        big_epochs = mne.Epochs(
+            raw,
+            events_d[eve],
             event_id=list(range(1, 9)),
-            tmin=-0.5, 
-            tmax=1.5,
-            picks=picks,
-            baseline=(-0.2, 0.0),
+            tmin=0.552, 
+            tmax=8.752,
+            picks=meg_picks,
+            baseline=((0.552, 0.752)),
             preload=True, 
-            detrend=1,
             verbose=verb
         )
-        
-        engage.save(
-            epochs_eng,
-            split_size="2GB",
-            fmt="single",
-            verbose=verb
-        )
-        print(epochs_eng)
+        big_epochs.apply_baseline(big_baseline)
+        big_epochs.shift_time(-big_baseline[1])
+        big_epochs.apply_baseline(small_baseline)
 
-        change = mne.Epochs(
-            raw, 
-            evts_e, 
-            event_id=list(range(1, 9)),
-            tmin=-0.5, 
-            tmax=1.5,
-            picks=picks,
-            baseline=(-0.2, 0.0),
-            preload=True, 
-            detrend=1,
-            verbose=verb
-        )
+        epochs_4s = big_epochs.copy().crop(None, 4)
+        epochs_4s.apply_baseline(None, None)
+        epochs_4s.save(epochs_4s_path)
+        del epochs_4s
+        epochs_ph1 = big_epochs.copy().crop(None, 2)
+        epochs_ph1.apply_baseline(None, None)
+        epochs_ph1.save(epochs_ph1_path)
+        del epochs_ph1
+        epochs_ph2 = big_epochs.copy().crop(2, 4)
+        epochs_ph2.apply_baseline(None, None)
+        epochs_ph2.save(epochs_ph2_path)
+        del epochs_ph2
 
-        change.save(
-            epochs_ch,
-            split_size="2GB",
-            fmt="single",
-            verbose=verb
+        engage = []
+        change = []
+        for ix, evo in enumerate(list(big_epochs.iter_evoked())):
+            en_evo = evo.copy()
+            en_shift = engage_val[ix] / samp
+            en_evo.crop(en_shift - 0.5, en_shift + 1.5)
+            en_evo.shift_time(-en_shift)
+            engage.append(en_evo)
+
+            ch_evo = evo.copy()
+            ch_shift = change_val[ix] / samp
+            ch_evo.crop(ch_shift - 0.5, ch_shift + 1.5)
+            ch_evo.shift_time(-ch_shift)
+            change.append(ch_evo)
+
+        engage_arr = np.array([i.data for i in engage])
+        engage_epo = mne.EpochsArray(
+            engage_arr,
+            big_epochs.info,
+            events_d[eve],
+            tmin=-0.5,
         )
-        print(epochs_ch)
+        engage_epo.apply_baseline(None, None)
+        engage_epo.save(epochs_eng_path)
+        del engage_epo
+
+        change_arr = np.array([i.data for i in change])
+        change_epo = mne.EpochsArray(
+            change_arr,
+            big_epochs.info,
+            events_d[eve],
+            tmin=-0.5,
+        )
+        change_epo.apply_baseline(None, None)
+        change_epo.save(epochs_ch_path)
+        del change_epo
+
 
 if pipeline_params["compute_forward_solution"]:
     src = mne.setup_source_space(

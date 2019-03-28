@@ -60,18 +60,29 @@ ica_files = files.get_files(
     subj_path,
     "",
     "-ica.fif"
-)[0]
+)[2]
 ica_files.sort()
 raw_files = files.get_files(
     subj_path,
     "",
     "-raw.fif",
     wp=True
-)[0]
+)[2]
 raw_files.sort()
 
 raw_file = raw_files[file_index]
 ica_file = ica_files[file_index]
+
+comp_ICA_json_path = op.join(
+    subj_path,
+    "{}-ica-rej.json".format(str(subj).zfill(3))
+)
+
+if not op.exists(comp_ICA_json_path):
+    json_dict = {
+        op.split(i)[1]: [] for i in raw_files
+    }
+    files.dump_the_dict(comp_ICA_json_path, json_dict)
 
 
 raw = mne.io.read_raw_fif(raw_file , preload=True, verbose=False)
@@ -93,7 +104,5 @@ print(subj)
 print(eog_ix)
 
 ica.plot_scores(eog_scores, exclude=eog_ix)
-
-ica.plot_components()
 
 ica.plot_sources(raw)

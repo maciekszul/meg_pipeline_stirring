@@ -8,26 +8,22 @@
   "downsample_raw": [false, 250],
 
   "MANUAL_OPERATION": "DO THIS ONCE",
-  "compute_ICA": false,
-  "create_JSON": false,
-  
+  "compute_ICA": false,  
   
   "apply_ICA":false,
-  "filter_more": [false, [[0,40], [1,40], [3,40], [1,90]]],
+  "filter_more": [false, [[0.1,40], [0.1, 90]]],
 
-  "PROCESSED_FOLDERS": ["filtered_0_40", "filtered_1_40", "filtered_3_40", "filtered_1_90"],
-  "which_folder": "filtered_1_40",
+  "PROCESSED_FOLDERS": ["filtered_01_40", "filtered_01_90"],
+  "which_folder": "filtered_01_40",
   
   "epoching": "parameters",
-  "epochs": false,
-  "epoch_2s": false,
-  "epoch_4s": false,
-  "epoch_response_locked": false,
+  "epochs": true,
+  "make_epochs": true,
 
-  "EPOCHS_TO_CHOOSE": ["4s", "ph1_2s", "ph2_2s", "ch", "en"],
+  "EPOCHS_TO_CHOOSE": ["4s", "ph1", "ph2", "ch", "en"],
 
   "fwd_solution": "parameters",
-  "which_epochs": "4s",
+  "which_epochs": "ch",
   "compute_forward_solution": false,
 
   "inv_solution": "parameters",
@@ -35,5 +31,5 @@
   "compute_inverse_operator": false,
 
   "INVERSE_SOLUTIONS": ["dSPM", "eLORETA", "sLORETA"],
-  "compute_inverse_solution": [true, "dSPM"]
+  "compute_inverse_solution": [false, "dSPM"]
 }
