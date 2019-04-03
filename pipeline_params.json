@@ -5,10 +5,10 @@
   "beh_path": "/cubric/scratch/c1557187/energy_landscape",
 
   "PREPROCESSING": "PARAMETERS",
-  "downsample_raw": [false, 250],
+  "downsample_raw": [true, 250],
 
   "MANUAL_OPERATION": "DO THIS ONCE",
-  "compute_ICA": false,  
+  "compute_ICA": true,
   
   "apply_ICA":false,
   "filter_more": [false, [[0.1,40], [0.1, 90]]],
@@ -17,8 +17,8 @@
   "which_folder": "filtered_01_40",
   
   "epoching": "parameters",
-  "epochs": true,
-  "make_epochs": true,
+  "epochs": false,
+  "make_epochs": false,
 
   "EPOCHS_TO_CHOOSE": ["4s", "ph1", "ph2", "ch", "en"],
 

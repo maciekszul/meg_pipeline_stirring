@@ -1,3 +1,8 @@
+import time
+named_tuple = time.localtime() # get struct_time
+time_string = time.strftime("%m/%d/%Y, %H:%M:%S", named_tuple)
+print("start:", time_string)
+
 import mne
 from mne.preprocessing import ICA
 import os.path as op
@@ -18,8 +23,7 @@ des = "pipeline script"
 parser = argparse.ArgumentParser(description=des)
 parser.add_argument(
     "-f", 
-    type=str, 
-    nargs=1,
+    type=str,
     default=json_file,
     help="JSON file with pipeline parameters"
 )
@@ -32,7 +36,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 params = vars(args)
-json_file = params["f"]
+json_file = str(params["f"])
 subj_index = params["n"]
 
 # read the pipeline params
@@ -44,9 +48,9 @@ fs_path = pipeline_params["fs_path"]
 data_path = pipeline_params["data_path"]
 output_path = pipeline_params["output_path"]
 
-subjs = files.get_folders_files(fs_path, wp=False)[0]
+subjs = files.get_folders_files(pipeline_params["beh_path"], wp=False)[0]
 subjs.sort()
-subjs = subjs[:-1]
+# subjs = subjs[:-1]
 subj = subjs[subj_index]
 
 raw_subj = op.join(data_path,"raw", subj)
@@ -57,8 +61,15 @@ files.make_folder(output_subj)
 json_ICA = op.join(output_subj, "{}-ica-rej.json".format(subj))
 samp = pipeline_params["downsample_raw"][1]
 
-mne.set_config("MNE_LOGGING_LEVEL", "CRITICAL")
+# mne.set_config("MNE_LOGGING_LEVEL", "CRITICAL")
 verb = False
+
+print("MNE-Python", mne.__version__)
+print("subject: ", subj)
+print("Freesurfer data path: ", fs_path)
+print("subject output path: ", output_subj)
+
+
 
 if pipeline_params["downsample_raw"][0]:
     """
@@ -209,6 +220,8 @@ if pipeline_params["compute_ICA"]:
         )
 
         ica.save(ica_out)
+
+        print(ica_out)
 
 if pipeline_params["apply_ICA"]:
     with open(json_ICA) as pipeline_file:
@@ -364,7 +377,7 @@ if pipeline_params["epochs"]:
     )
     test_of_length = arr_lens == test_of_trueness
 
-    print(test_of_length)
+    print("test of length", test_of_length)
 
     beh = pd.read_pickle(
         beh_file
@@ -373,7 +386,7 @@ if pipeline_params["epochs"]:
     beh_vs_meg = beh.conditions.values + 1 == all_evts[:,2]
     compatible = np.sum(beh_vs_meg) == all_evts.shape[0]
 
-    print(compatible)
+    print("compatible", compatible)
 
 if pipeline_params["make_epochs"]:
     """
@@ -472,13 +485,13 @@ if pipeline_params["make_epochs"]:
         for ix, evo in enumerate(list(big_epochs.iter_evoked())):
             en_evo = evo.copy()
             en_shift = engage_val[ix] / samp
-            en_evo.crop(en_shift - 0.5, en_shift + 1.5)
+            en_evo.crop(en_shift - 0.75, en_shift + 1.5)
             en_evo.shift_time(-en_shift)
             engage.append(en_evo)
 
             ch_evo = evo.copy()
             ch_shift = change_val[ix] / samp
-            ch_evo.crop(ch_shift - 0.5, ch_shift + 1.5)
+            ch_evo.crop(ch_shift - 0.75, ch_shift + 1.25)
             ch_evo.shift_time(-ch_shift)
             change.append(ch_evo)
 
@@ -504,14 +517,23 @@ if pipeline_params["make_epochs"]:
         change_epo.save(epochs_ch_path)
         del change_epo
 
+        print("epochs_saved")
 
 if pipeline_params["compute_forward_solution"]:
+
     src = mne.setup_source_space(
         subject=subj, 
         subjects_dir=fs_path, 
         spacing="ico5", 
         add_dist=False
     )
+
+    src_file_out = op.join(
+        output_subj,
+        "{}-src.fif".format(subj)
+    )
+
+
 
     conductivity = (0.3, )
     model = mne.make_bem_model(
@@ -522,6 +544,11 @@ if pipeline_params["compute_forward_solution"]:
     )
 
     bem = mne.make_bem_solution(model)
+
+    bem_file_out = op.join(
+        output_subj,
+        "{}-bem.fif".format(subj)
+    )
 
     source_raw_files = files.get_files(
         output_subj,
@@ -725,3 +752,7 @@ if pipeline_params["compute_inverse_solution"][0]:
             pick_ori=None,
             verbose=True
         )
+
+named_tuple = time.localtime() # get struct_time
+time_string = time.strftime("%m/%d/%Y, %H:%M:%S", named_tuple)
+print("end:", time_string)
