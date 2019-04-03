@@ -533,7 +533,7 @@ if pipeline_params["compute_forward_solution"]:
         "{}-src.fif".format(subj)
     )
 
-
+    mne.write_source_spaces(src_file_out, src)
 
     conductivity = (0.3, )
     model = mne.make_bem_model(
@@ -549,6 +549,8 @@ if pipeline_params["compute_forward_solution"]:
         output_subj,
         "{}-bem.fif".format(subj)
     )
+
+    mne.write_bem_solution(bem_file_out, bem)
 
     source_raw_files = files.get_files(
         output_subj,
