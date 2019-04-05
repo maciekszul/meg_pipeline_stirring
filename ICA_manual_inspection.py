@@ -47,7 +47,7 @@ subjs = files.get_folders_files(
     wp=False
 )[0]
 
-
+subjs.sort()
 
 subj = subjs[subj_index]
 

@@ -485,13 +485,13 @@ if pipeline_params["make_epochs"]:
         for ix, evo in enumerate(list(big_epochs.iter_evoked())):
             en_evo = evo.copy()
             en_shift = engage_val[ix] / samp
-            en_evo.crop(en_shift - 0.75, en_shift + 1.5)
+            en_evo.crop(en_shift - 0.5, en_shift + 1.5)
             en_evo.shift_time(-en_shift)
             engage.append(en_evo)
 
             ch_evo = evo.copy()
             ch_shift = change_val[ix] / samp
-            ch_evo.crop(ch_shift - 0.75, ch_shift + 1.25)
+            ch_evo.crop(ch_shift - 0.5, ch_shift + 1.5)
             ch_evo.shift_time(-ch_shift)
             change.append(ch_evo)
 
