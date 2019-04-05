@@ -17,17 +17,17 @@
   "which_folder": "filtered_01_40",
   
   "epoching": "parameters",
-  "epochs": true,
-  "make_epochs": true,
+  "epochs": false,
+  "make_epochs": false,
 
   "EPOCHS_TO_CHOOSE": ["4s", "ph1", "ph2", "ch", "en"],
 
   "fwd_solution": "parameters",
-  "which_epochs": "ch",
-  "compute_forward_solution": false,
+  "which_epochs": "en",
+  "compute_forward_solution": true,
 
   "inv_solution": "parameters",
-  "compute_noise_covariance": false,
+  "compute_noise_covariance": true,
   "compute_inverse_operator": false,
 
   "INVERSE_SOLUTIONS": ["dSPM", "eLORETA", "sLORETA"],

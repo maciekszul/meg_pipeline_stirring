@@ -485,7 +485,7 @@ if pipeline_params["make_epochs"]:
         for ix, evo in enumerate(list(big_epochs.iter_evoked())):
             en_evo = evo.copy()
             en_shift = engage_val[ix] / samp
-            en_evo.crop(en_shift - 0.5, en_shift + 1.5)
+            en_evo.crop(en_shift - 0.2, en_shift + 1.2)
             en_evo.shift_time(-en_shift)
             engage.append(en_evo)
 
@@ -524,7 +524,7 @@ if pipeline_params["compute_forward_solution"]:
     src = mne.setup_source_space(
         subject=subj, 
         subjects_dir=fs_path, 
-        spacing="ico5", 
+        spacing="oct6", 
         add_dist=False
     )
 
@@ -533,7 +533,7 @@ if pipeline_params["compute_forward_solution"]:
         "{}-src.fif".format(subj)
     )
 
-    mne.write_source_spaces(src_file_out, src)
+    mne.write_source_spaces(src_file_out, src, overwrite=True)
 
     conductivity = (0.3, )
     model = mne.make_bem_model(
@@ -592,7 +592,8 @@ if pipeline_params["compute_forward_solution"]:
         mne.write_forward_solution(
             fwd_out, 
             fwd, 
-            verbose=verb
+            verbose=verb, 
+            overwrite=True
         )
         print(fwd_out)
 
@@ -644,7 +645,8 @@ if pipeline_params["compute_noise_covariance"]:
         )
 
         noise_cov.save(
-            cov_mx_out
+            cov_mx_out,
+            overwrite=True
         )
         print(cov_mx_out)
 
@@ -678,7 +680,7 @@ if pipeline_params["compute_inverse_operator"]:
     for src, fwd, cov in zip(source_epo_files, fwd_solution_files, cov_mx_files):
         inv_oper_out = op.join(
             input_path,
-            "{1}_{0}-inv.fif".format(
+            "{1}{0}-inv.fif".format(
                 src[len(str(input_path))+len(pipeline_params["which_epochs"])+2:-8],
                 pipeline_params["which_epochs"])
         )
