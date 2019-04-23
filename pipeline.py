@@ -645,8 +645,7 @@ if pipeline_params["compute_noise_covariance"]:
         )
 
         noise_cov.save(
-            cov_mx_out,
-            overwrite=True
+            cov_mx_out
         )
         print(cov_mx_out)
 
