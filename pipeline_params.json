@@ -27,7 +27,7 @@
   "compute_forward_solution": true,
 
   "inv_solution": "parameters",
-  "compute_noise_covariance": true,
+  "compute_noise_covariance": false,
   "compute_inverse_operator": false,
 
   "INVERSE_SOLUTIONS": ["dSPM", "eLORETA", "sLORETA"],

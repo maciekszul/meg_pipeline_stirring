@@ -524,7 +524,7 @@ if pipeline_params["compute_forward_solution"]:
     src = mne.setup_source_space(
         subject=subj, 
         subjects_dir=fs_path, 
-        spacing="oct6", 
+        spacing="ico4", 
         add_dist=False
     )
 
@@ -538,7 +538,7 @@ if pipeline_params["compute_forward_solution"]:
     conductivity = (0.3, )
     model = mne.make_bem_model(
         subject=subj,
-        ico=5,
+        ico=4,
         conductivity=conductivity,
         subjects_dir=fs_path
     )
