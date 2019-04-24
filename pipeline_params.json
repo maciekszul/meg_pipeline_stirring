@@ -23,13 +23,14 @@
   "EPOCHS_TO_CHOOSE": ["4s", "ph1", "ph2", "ch", "en"],
 
   "fwd_solution": "parameters",
-  "which_epochs": "en",
-  "compute_forward_solution": true,
-
-  "inv_solution": "parameters",
+  "which_epochs": "ph2",
+  "compute_forward_solution": false,
   "compute_noise_covariance": false,
-  "compute_inverse_operator": false,
 
-  "INVERSE_SOLUTIONS": ["dSPM", "eLORETA", "sLORETA"],
-  "compute_inverse_solution": [false, "dSPM"]
+  "ANALYSIS_FOLDER": ["filtered_01_40", "filtered_01_90"],
+  "which_processed_folder": "filtered_01_40",
+  "which_processed_epochs": "ph1",
+  "DATA_TO_CHOOSE_FROM": ["src_ch_dSPM.pickle", "src_en_dSPM.pickle"],
+  "which_data": "src_ch_dSPM.pickle",
+  "which_comp": 0
 }

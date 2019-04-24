@@ -70,7 +70,6 @@ print("Freesurfer data path: ", fs_path)
 print("subject output path: ", output_subj)
 
 
-
 if pipeline_params["downsample_raw"][0]:
     """
     DOWNSAMPLE THE RAW *.FIF FILES
@@ -649,112 +648,6 @@ if pipeline_params["compute_noise_covariance"]:
         )
         print(cov_mx_out)
 
-if pipeline_params["compute_inverse_operator"]:
-    input_path = op.join(
-        output_subj,
-        pipeline_params["which_folder"]
-    )
-    source_epo_files = files.get_files(
-        input_path,
-        pipeline_params["which_epochs"],
-        "-epo.fif"
-    )[2]
-    source_epo_files.sort()
-    fwd_solution_files = files.get_files(
-        output_subj,
-        "",
-        "-fwd.fif"
-    )[0]
-    fwd_solution_files = [x for x in fwd_solution_files if "rs" not in x]
-    fwd_solution_files.sort()
-    
-    cov_mx_files = files.get_files(
-        input_path,
-        "",
-        "-cov.fif"
-    )[0]
-    cov_mx_files = [x for x in cov_mx_files if "rs" not in x]
-    cov_mx_files.sort()
-
-    for src, fwd, cov in zip(source_epo_files, fwd_solution_files, cov_mx_files):
-        inv_oper_out = op.join(
-            input_path,
-            "{1}{0}-inv.fif".format(
-                src[len(str(input_path))+len(pipeline_params["which_epochs"])+2:-8],
-                pipeline_params["which_epochs"])
-        )
-
-        epochs = mne.read_epochs(
-            src,
-            preload=False,
-            verbose=verb
-        )
-
-        fwd_data = mne.read_forward_solution(fwd)
-        cov_data = mne.read_cov(cov)
-        inverse_operator = mne.minimum_norm.make_inverse_operator(
-            epochs.info,
-            fwd_data,
-            cov_data,
-            loose=0.2,
-            depth=0.8
-        )
-
-        mne.minimum_norm.write_inverse_operator(
-            inv_oper_out,
-            inverse_operator
-        )
-        print(inv_oper_out)
-
-if pipeline_params["compute_inverse_solution"][0]:
-    method_dict = {
-        "dSPM": (8, 12, 15),
-        "sLORETA": (3, 5, 7),
-        "eLORETA": (0.75, 1.25, 1.75)
-    }
-
-    input_path = op.join(
-        output_subj,
-        pipeline_params["which_folder"]
-    )
-    epo_files = files.get_files(
-        input_path,
-        pipeline_params["which_epochs"],
-        "-epo.fif"
-    )[2]
-    epo_files.sort()
-    inv_files = files.get_files(
-        input_path,
-        pipeline_params["which_epochs"],
-        "-inv.fif"
-    )[2]
-    inv_files.sort()
-    print(epo_files)
-    print(inv_files)
-    method = pipeline_params["compute_inverse_solution"][1]
-    snr = 3.
-    lambda2 = 1. / snr ** 2
-    lims = method_dict[method]
-
-    for epo_path, inv_path in zip(epo_files, inv_files):
-        epo = mne.read_epochs(
-            epo_files,
-            verbose=verb,
-            preload=True
-        )
-        inv = mne.minimum_norm.read_inverse_operator(
-            inv_path,
-            verbose=verb
-        )
-        
-        stc = mne.minimum_norm.apply_inverse_epochs(
-            epochs,
-            inverse_operator,
-            lambda2,
-            method=method,
-            pick_ori=None,
-            verbose=True
-        )
 
 named_tuple = time.localtime() # get struct_time
 time_string = time.strftime("%m/%d/%Y, %H:%M:%S", named_tuple)
