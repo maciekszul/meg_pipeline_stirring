@@ -13,6 +13,7 @@ from tools import files
 from scipy.stats import trim_mean, distributions
 from operator import itemgetter
 import pandas as pd
+from functools import partial
 
 """
 Preparation and permutation testing 
@@ -92,7 +93,7 @@ dict_comp = {
         3: {"coh_change": [2], "dir_coh_change": [3]},
 }
 
-comp = dict_comp["which_comp"]
+comp = dict_comp[subj_index]
 
 n_subjects = 13
 
@@ -136,16 +137,13 @@ src = mne.setup_source_space(
 )
 connectivity = mne.spatial_src_connectivity(src)
 
-p_threshold = 0.01
-f_threshold = distributions.f.ppf(
-    1. - p_threshold / 2.,
-    n_subjects - 1, n_subjects - 1)
+tfce = dict(start=0, step=0.1)
 
 clu = mne.stats.spatio_temporal_cluster_test(
     [X[k] for k in X.keys()],
     connectivity=connectivity,
     n_jobs=-1,
-    threshold=f_threshold,
+    threshold=tfce,
     verbose=True
 )
 
@@ -160,7 +158,7 @@ name_ = list(comp.keys())
 
 output_file = op.join(
     output_path,
-    "{}_{}VS{}".format(pipeline_params["which_data"], name_[0], name_[1])
+    "{}_{}VS{}.pickle".format(pipeline_params["which_data"].split("_")[1], name_[0], name_[1])
 )
 
 with open(output_file, "wb") as f:

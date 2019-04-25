@@ -31,6 +31,5 @@
   "which_processed_folder": "filtered_01_40",
   "which_processed_epochs": "ph1",
   "DATA_TO_CHOOSE_FROM": ["src_ch_dSPM.pickle", "src_en_dSPM.pickle"],
-  "which_data": "src_ch_dSPM.pickle",
-  "which_comp": 0
+  "which_data": "src_ch_dSPM.pickle"
 }
