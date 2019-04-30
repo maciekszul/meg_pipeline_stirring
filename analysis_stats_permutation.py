@@ -137,7 +137,7 @@ src = mne.setup_source_space(
 )
 connectivity = mne.spatial_src_connectivity(src)
 
-tfce = dict(start=0, step=0.1)
+tfce = dict(start=0, step=0.2)
 
 clu = mne.stats.spatio_temporal_cluster_test(
     [X[k] for k in X.keys()],

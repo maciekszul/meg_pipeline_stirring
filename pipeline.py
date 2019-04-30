@@ -499,7 +499,7 @@ if pipeline_params["make_epochs"]:
             engage_arr,
             big_epochs.info,
             events_d[eve],
-            tmin=-0.5,
+            tmin=-0.2,
         )
         engage_epo.apply_baseline(None, None)
         engage_epo.save(epochs_eng_path)
